@@ -1,35 +1,43 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
-import authConfig from '../../config/auth';
 import * as Yup from 'yup';
 
+import User from '../models/User';
+import authConfig from '../../config/auth';
+
 class SessionController {
-  async store(req, res) {
-    const schema = Yup.object().shape({
-      email: Yup.string().email(),
-      password: Yup.string().required(),
-    });
+    async store(req, res) {
+        const schema = Yup.object().shape({
+            email: Yup.string()
+                .email()
+                .required(),
+            password: Yup.string().required(),
+        });
 
-    if (!(await schema.isValid()))
-      return res.status(400).json({ message: 'Validation fails.' });
+        if (!(await schema.isValid(req.body)))
+            return res.status(400).json({ error: 'Validation fails.' });
 
-    const { email, password } = req.body;
-    const user = await User.findOne({ where: { email } });
+        const { email, password } = req.body;
 
-    if (!user) return res.status(401).json({ message: 'User not found.' });
+        const user = await User.findOne({ where: { email } });
 
-    if (!(await user.checkPassword(password)))
-      return res.status(400).json({ message: 'Password does not match!' });
+        if (!user) return res.status(401).json({ error: 'User not found!' });
 
-    const { id, name } = user;
+        if (!(await user.checkPassword(password)))
+            return res.status(401).json({ error: 'Password does not match!' });
 
-    return res.json({
-      user: { id, name, email },
-      token: jwt.sign({ id }, authConfig.secret, {
-        expiresIn: authConfig.expiresIn,
-      }),
-    });
-  }
+        const { id, name } = user;
+
+        return res.json({
+            user: {
+                id,
+                name,
+                email,
+            },
+            token: jwt.sign({ id }, authConfig.secret, {
+                expiresIn: authConfig.expiresIn,
+            }),
+        });
+    }
 }
 
 export default new SessionController();
